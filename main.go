@@ -4,8 +4,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
+	"time"
 )
 
 //Global variable for DES
@@ -38,6 +40,10 @@ var (
 	C          []byte
 	file       *os.File
 	num2       int
+	result     string
+	YerOrNo    bool
+	randBit    int
+	randPos    int
 )
 
 func getNewKey(x []byte, y []int) []byte {
@@ -91,10 +97,25 @@ func main() {
 	fmt.Scan(&answer2)
 	fmt.Print("Please choose :\n1 - encrypt\n2 - decrypt\n")
 	fmt.Scan(&answer)
+	result = "Using "
+	if answer2 == 1 {
+		result += "CBC"
+	}
+
+	if answer2 == 2 {
+		result += "CFB"
+	}
+
+	if answer2 == 3 {
+		result += "default"
+	}
+	result += " - SDES "
 	if answer == 1 {
 		file, _ = os.Open("input.txt")
+		result += "encryption"
 	} else {
 		file, _ = os.Open("output.txt")
+		result += "decryption"
 	}
 	scanner := bufio.NewScanner(file)
 	scanner.Scan()
@@ -108,25 +129,43 @@ func main() {
 		C = []byte(fmt.Sprintf("%08b", num2))
 	}
 	tmp_C := append([]byte{}, C...)
-	fmt.Println(string(key))
 	initilizate()
 	if answer == 1 && answer2 != 2 {
 		keyOne, keyTwo = keyTwo, keyOne
 	}
-	for _, i := range text {
+	fmt.Println(result)
+	if answer == 2 {
+		an := ""
+		fmt.Println("Do you wanna reverse one bit?Y/N")
+		fmt.Scan(&an)
+		if an == "Y" {
+			rand.Seed(time.Now().UnixNano())
+			randPos = rand.Intn(len(text) - 1)
+			randBit = rand.Intn(7)
+			YerOrNo = true
+			fmt.Printf("On connection occur a issue which in %d position reversed a bit number %d\n", randPos, randBit)
+		}
+	}
+	for j, i := range text {
+
 		var calc string
 		cur := []byte(fmt.Sprintf("%08b", i))
-		if answer2 == 1 {
-			if answer == 1 {
+		if YerOrNo && j == randPos {
+			cur[randBit] -= 48
+			cur[randBit] ^= 1
+			cur[randBit] += 48
+		}
+		if answer2 == 1 { // <- CBC
+			if answer == 1 { // <- encrypt
 				cur = xor(tmp_C, cur)
 				calc = process(cur, keyOne, keyTwo)
 				tmp_C = []byte(calc)
-			} else {
+			} else { //<-decrypt
 				calc = (process(cur, keyOne, keyTwo))
 				calc = string(xor([]byte(calc), tmp_C))
 				tmp_C = cur
 			}
-		} else if answer2 == 2 {
+		} else if answer2 == 2 { // <- CFB
 			if answer == 1 {
 				calc = process(tmp_C, keyOne, keyTwo)
 				calc = string(xor([]byte(calc), cur))
@@ -141,6 +180,12 @@ func main() {
 		}
 		ch, _ := strconv.ParseInt(calc, 2, 64)
 		final_text += string(ch)
+		if i < 32 {
+			i = ' '
+		}
+		if ch < 32 {
+			ch = ' '
+		}
 		fmt.Printf("%c -> %c\n", i, ch)
 	}
 	f, _ := os.Create("output.txt")
