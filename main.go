@@ -34,7 +34,10 @@ var (
 	p4         = []int{2, 4, 3, 1}
 	final_text string
 	answer     int
+	answer2    int
+	C          []byte
 	file       *os.File
+	num2       int
 )
 
 func getNewKey(x []byte, y []int) []byte {
@@ -84,28 +87,59 @@ func process(char, k1, k2 []byte) string {
 
 func main() {
 	//Scan input data on txt
+	fmt.Print("Please choose :\n1 - CBC\n2 - CFB\n3 -default\n")
+	fmt.Scan(&answer2)
 	fmt.Print("Please choose :\n1 - encrypt\n2 - decrypt\n")
 	fmt.Scan(&answer)
-	if answer == 2 {
+	if answer == 1 {
 		file, _ = os.Open("input.txt")
 	} else {
 		file, _ = os.Open("output.txt")
 	}
-
 	scanner := bufio.NewScanner(file)
 	scanner.Scan()
 	num, _ := strconv.Atoi(scanner.Text())
 	key = []byte(fmt.Sprintf("%010b", num))
 	scanner.Scan()
 	text = []rune(scanner.Text())
+	if answer2 < 3 {
+		scanner.Scan()
+		num2, _ = strconv.Atoi(scanner.Text())
+		C = []byte(fmt.Sprintf("%08b", num2))
+	}
+	tmp_C := append([]byte{}, C...)
 	fmt.Println(string(key))
 	initilizate()
-	if answer == 1 {
+	if answer == 1 && answer2 != 2 {
 		keyOne, keyTwo = keyTwo, keyOne
 	}
 	for _, i := range text {
-		cur := fmt.Sprintf("%08b", i)
-		ch, _ := strconv.ParseInt(process([]byte(cur), keyOne, keyTwo), 2, 64)
+		var calc string
+		cur := []byte(fmt.Sprintf("%08b", i))
+		if answer2 == 1 {
+			if answer == 1 {
+				cur = xor(tmp_C, cur)
+				calc = process(cur, keyOne, keyTwo)
+				tmp_C = []byte(calc)
+			} else {
+				calc = (process(cur, keyOne, keyTwo))
+				calc = string(xor([]byte(calc), tmp_C))
+				tmp_C = cur
+			}
+		} else if answer2 == 2 {
+			if answer == 1 {
+				calc = process(tmp_C, keyOne, keyTwo)
+				calc = string(xor([]byte(calc), cur))
+				tmp_C = []byte(calc)
+			} else {
+				calc = process(tmp_C, keyOne, keyTwo)
+				calc = string(xor([]byte(calc), cur))
+				tmp_C = cur
+			}
+		} else {
+			calc = process(cur, keyOne, keyTwo)
+		}
+		ch, _ := strconv.ParseInt(calc, 2, 64)
 		final_text += string(ch)
 		fmt.Printf("%c -> %c\n", i, ch)
 	}
@@ -113,4 +147,8 @@ func main() {
 	f.Write([]byte(strconv.Itoa(num)))
 	f.Write([]byte("\n"))
 	f.Write([]byte(final_text))
+	if answer2 < 3 {
+		f.Write([]byte("\n"))
+		f.Write([]byte(strconv.Itoa(num2)))
+	}
 }
